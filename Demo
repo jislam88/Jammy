@@ -1,0 +1,51 @@
+import pandas as pd
+from playwright.sync_api import sync_playwright
+
+def read_credentials_from_excel(file_path):
+    # Assuming your spreadsheet has columns 'Username', 'Password', and 'ExpectedResult'
+    df = pd.read_excel(file_path)
+    return df[['Username', 'Password', 'ExpectedResult']]
+
+def login_with_credentials(username, password):
+    with sync_playwright() as p:
+        browser = p.chromium.launch()
+        context = browser.new_context()
+        page = context.new_page()
+
+        page.goto("https://demoqa.com/login")
+
+        # Fill in the login form
+        page.type("#userName", username)
+        page.type("#password", password)
+        page.click("#login")
+
+        # Wait for navigation to complete
+        page.wait_for_load_state("load")
+
+        # Check if login was successful based on the URL or other elements on the page
+        success = "dashboard" in page.url()
+
+        context.close()
+
+        return success
+
+def main():
+    spreadsheet_path = "C:/Users/Jamil/Desktop/Jam/spreadsheet.xlsx"
+    credentials_df = read_credentials_from_excel(spreadsheet_path)
+
+    for index, row in credentials_df.iterrows():
+        username = row['Username']
+        password = row['Password']
+        expected_result = row['ExpectedResult']
+
+        success = login_with_credentials(username, password)
+
+        if success and expected_result == "success":
+            print(f"Successfully logged in with {username}:{password}")
+        elif not success and expected_result == "failure":
+            print(f"Login failed as expected with {username}:{password}")
+        else:
+            print(f"Unexpected result for {username}:{password}")
+
+if __name__ == "__main__":
+    main() 
